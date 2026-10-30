@@ -275,6 +275,24 @@ footer{text-align:center;color:var(--muted);padding:16px 18px 34px;font-size:15p
 .install-txt span{color:var(--muted)}
 .install .btn{padding:8px 16px}
 .install-x{border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 6px}
+.settle-box{margin-top:14px}
+.settle-box h3{font-size:18px;font-weight:800;margin:0 0 2px}
+.fold{margin-top:12px}
+.fold > summary{cursor:pointer;font-weight:700;font-size:15px;padding:6px 0;list-style:none}
+.fold > summary::-webkit-details-marker{display:none}
+.fold > summary::before{content:"▸";display:inline-block;margin-right:8px;transition:transform .15s}
+.fold[open] > summary::before{transform:rotate(90deg)}
+.pp-share{font-weight:500;font-size:13px;color:var(--muted)}
+.pp-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.pp-grid span:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
+.pp-head{font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px dashed var(--line)}
+.pp-row{font-size:15px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.pp-row .zero,.pp-row .even{color:var(--muted)}
+.pp-row .pos,.pp-legend .pos{color:#2F7D4F;font-weight:700}
+.pp-row .neg,.pp-legend .neg{color:var(--due);font-weight:700}
+.pp-legend{font-size:12px;color:var(--muted);margin:8px 0 0}
+.settle-row{display:flex;justify-content:space-between;gap:10px;background:var(--chip);border-radius:12px;padding:9px 12px;margin-bottom:6px;font-size:15px}
+@media (prefers-color-scheme:dark){.pp-row .pos,.pp-legend .pos{color:#8FD3A8}}
 </style>
 </head>
 <body>
@@ -555,23 +573,34 @@ footer{text-align:center;color:var(--muted);padding:16px 18px 34px;font-size:15p
   <button type="button" class="sheet-close sheet-x" aria-label="Close">×</button>
 <section aria-labelledby="h-exp">
   <h2 id="h-exp">Expenses</h2>
-  <p class="small muted live-note" id="expNote" style="margin:-8px 0 14px">Loading from the Google Sheet…</p>
+  <p class="small muted live-note" id="expNote" style="margin:-8px 0 4px">Loading from the Google Sheet…</p>
+  <p class="small muted" style="margin:0 0 14px">For food, transport, and other shared costs. Resort and tour are in Costs.</p>
   <div class="exp-summary">
     <div class="stat"><div class="k">Spent so far</div><div class="v" id="expTotal">₱0</div></div>
     <div class="stat"><div class="k">Per person (÷ 9)</div><div class="v" id="expEach">₱0</div></div>
   </div>
-  <div class="panel">
+  <div class="panel settle-box" id="byPerson" hidden>
+    <h3>Settle up</h3>
+    <p class="small muted" style="margin:0 0 10px">Who pays whom so everyone pays an equal share.</p>
+    <div id="settleRows"></div>
+    <details class="fold">
+      <summary>See breakdown <span class="pp-share" id="ppShare"></span></summary>
+      <div class="pp-grid pp-head"><span>Name</span><span>Paid</span><span>Balance</span></div>
+      <div id="ppRows"></div>
+      <p class="pp-legend"><span class="pos">+ green</span> others owe them · <span class="neg">− red</span> still owes</p>
+    </details>
+  </div>
+  <div class="panel" style="margin-top:14px">
     <a class="btn" href="https://docs.google.com/spreadsheets/d/1o6LNncgfFJnmw8EhpyNFoYfGGaEOLUAeGE_F64vGhVQ/edit#gid=1564797202" target="_blank" rel="noopener">+ Add expense in Google Sheet</a>
+    <details class="fold" id="expFold" open>
+    <summary id="expFoldLabel">All expenses</summary>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Date</th><th>Who</th><th>Item</th><th class="amt">₱</th></tr></thead>
         <tbody id="expBody"><tr><td colspan="4" class="empty">No expenses yet.</td></tr></tbody>
       </table>
     </div>
-    <div class="by-person" id="byPerson" hidden>
-      <h3>Paid by each person</h3>
-      <div class="chips" id="byPersonChips"></div>
-    </div>
+    </details>
   </div>
 </section>
 </div>
@@ -997,9 +1026,46 @@ footer{text-align:center;color:var(--muted);padding:16px 18px 34px;font-size:15p
     }
     $("expTotal").textContent = fmt(total);
     $("expEach").textContent = fmt(Math.round(total/9*100)/100);
-    const names = Object.keys(per); $("byPerson").hidden = !names.length;
-    const chips = $("byPersonChips"); chips.textContent = "";
-    names.sort((a,b) => per[b]-per[a]).forEach(k => { const sp = document.createElement("span"); sp.textContent = k + " · " + fmt(per[k]); chips.appendChild(sp); });
+    $("expFoldLabel").textContent = items.length ? ("All expenses (" + items.length + ")") : "All expenses";
+    if (!$("expFold").__b){ $("expFold").__b = 1; $("expFoldLabel").addEventListener("click", () => { window.__expFoldTouched = true; }); }
+    if (!window.__expFoldTouched) $("expFold").open = items.length <= 5;
+    $("byPerson").hidden = !items.length;
+    const PEOPLE = ["Brod Dennis","Dominic","Lilette","Grace","Lorelyn","Nino Rey","Samantha Rose","Andresa","Glenn"];
+    const short = n => PEOPLE.find(p => n === p || n.startsWith(p + " ")) || n;
+    const paidBy = {}; PEOPLE.forEach(p => paidBy[p] = 0);
+    Object.keys(per).forEach(n => { const k = short(n); paidBy[k] = (paidBy[k] || 0) + per[n]; });
+    const share = Math.round(total / 9 * 100) / 100;
+    $("ppShare").textContent = "· share each " + fmt(share);
+    const bal = Object.keys(paidBy).map(n => ({n, paid: paidBy[n], b: Math.round((paidBy[n] - share) * 100) / 100})).sort((a,b) => b.b - a.b);
+    const rowsEl = $("ppRows"); rowsEl.textContent = "";
+    bal.forEach(r => {
+      const row = document.createElement("div"); row.className = "pp-grid pp-row";
+      const a = document.createElement("span"); a.textContent = r.n;
+      const b = document.createElement("span"); b.textContent = fmt(r.paid); if (!r.paid) b.className = "zero";
+      const c = document.createElement("span");
+      if (Math.abs(r.b) < 0.01){ c.textContent = "Even"; c.className = "even"; }
+      else if (r.b > 0){ c.textContent = "+" + fmt(r.b); c.className = "pos"; }
+      else { c.textContent = "−" + fmt(-r.b); c.className = "neg"; }
+      row.append(a, b, c); rowsEl.appendChild(row);
+    });
+    const cred = bal.filter(r => r.b > 0.009).map(r => ({n: r.n, v: r.b}));
+    const debt = bal.filter(r => r.b < -0.009).map(r => ({n: r.n, v: -r.b})).sort((a,b) => b.v - a.v);
+    const pays = [];
+    for (const d of debt){
+      let left = d.v;
+      cred.sort((a,b) => b.v - a.v);
+      const fit = cred.find(c => c.v >= left - 0.01);
+      if (fit){ pays.push([d.n, fit.n, left]); fit.v -= left; continue; }
+      for (const c of cred){ if (left < 0.01) break; if (c.v < 0.01) continue; const amt = Math.min(left, c.v); pays.push([d.n, c.n, amt]); c.v -= amt; left -= amt; }
+    }
+    const st = $("settleRows"); st.textContent = "";
+    if (!pays.length){ const p = document.createElement("p"); p.className = "small muted"; p.style.margin = "0"; p.textContent = "Everyone is even."; st.appendChild(p); }
+    pays.forEach(([from, to, amt]) => {
+      const row = document.createElement("div"); row.className = "settle-row";
+      const l = document.createElement("span"); l.textContent = from + " → " + to;
+      const r = document.createElement("b"); r.textContent = fmt(Math.round(amt * 100) / 100);
+      row.append(l, r); st.appendChild(row);
+    });
   }
 
   function save(key, rows){ try { localStorage.setItem(key, JSON.stringify({t: Date.now(), rows})); } catch(e){} }
