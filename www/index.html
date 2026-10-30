@@ -177,7 +177,9 @@ details li{margin:4px 0}
 .links{margin-top:14px}
 
 /* Expenses */
-.exp-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.exp-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.exp-summary .stat{padding:12px}
+.exp-summary .stat .v{font-size:clamp(17px,4.8vw,24px);white-space:nowrap}
 .stat{background:var(--surface);border-radius:20px;padding:14px 16px;box-shadow:var(--shadow)}
 .stat .k{font-size:13px;color:var(--muted)}
 .stat .v{font-weight:800;font-size:26px;line-height:1.15}
@@ -218,7 +220,21 @@ main{padding-bottom:100px}
 .form-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .status{font-size:14px;color:var(--muted);min-height:1.4em;margin:8px 0 0}
 .status.err{color:var(--due)}
-.table-wrap{overflow-x:auto;margin-top:16px}
+.table-wrap{margin-top:12px}
+#expFold table,#expFold tbody{display:block;width:100%}
+#expFold thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%)}
+#expBody tr{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;padding:10px 2px;border-bottom:1px dashed var(--line)}
+#expBody td{padding:0;border:0;min-width:0}
+#expBody td:nth-child(3){order:1;flex:1 1 0;font-weight:600;overflow-wrap:anywhere}
+#expBody td:nth-child(4){order:2;text-align:right;font-weight:700;white-space:nowrap}
+#expBody tr::after{content:"";order:3;flex-basis:100%;height:0}
+#expBody td:nth-child(1){order:4;font-size:13px}
+#expBody td:nth-child(2){order:5;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+#expBody td:nth-child(2)::before{content:"· ";}
+#expBody td.empty{flex:1 1 100%;font-weight:400}
+.pp-grid > span{min-width:0;overflow-wrap:anywhere}
+.squad-sheet{scrollbar-width:none}
+.squad-sheet::-webkit-scrollbar{display:none}
 table{width:100%;border-collapse:collapse;font-size:16px}
 th{text-align:left;font-size:13px;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px dashed var(--line)}
 td{padding:10px 8px;border-bottom:1px dashed var(--line);vertical-align:top}
@@ -584,14 +600,15 @@ footer{text-align:center;color:var(--muted);padding:16px 18px 34px;font-size:15p
   <p class="small muted" style="margin:0 0 14px">For food, transport, and other shared costs. Resort and tour are in Costs.</p>
   <div class="exp-summary">
     <div class="stat"><div class="k">Spent so far</div><div class="v" id="expTotal">₱0</div></div>
-    <div class="stat"><div class="k">Per person (÷ 9)</div><div class="v" id="expEach">₱0</div></div>
+    <div class="stat"><div class="k">Share each</div><div class="v" id="expEach">₱0</div></div>
+    <div class="stat"><div class="k">Expenses</div><div class="v" id="expCount">0</div></div>
   </div>
   <div class="panel settle-box" id="byPerson" hidden>
     <h3>Settle up</h3>
     <p class="small muted" style="margin:0 0 10px">Who pays whom so everyone pays an equal share.</p>
     <div id="settleRows"></div>
     <details class="fold">
-      <summary>See breakdown <span class="pp-share" id="ppShare"></span></summary>
+      <summary>See breakdown</summary>
       <div class="pp-grid pp-head"><span>Name</span><span>Paid</span><span>Balance</span></div>
       <div id="ppRows"></div>
       <p class="pp-legend"><span class="pos">+ green</span> others owe them · <span class="neg">− red</span> still owes</p>
@@ -1033,6 +1050,7 @@ footer{text-align:center;color:var(--muted);padding:16px 18px 34px;font-size:15p
     }
     $("expTotal").textContent = fmt(total);
     $("expEach").textContent = fmt(Math.round(total/9*100)/100);
+    $("expCount").textContent = String(items.length);
     $("expFoldLabel").textContent = items.length ? ("All expenses (" + items.length + ")") : "All expenses";
     if (!$("expFold").__b){ $("expFold").__b = 1; $("expFoldLabel").addEventListener("click", () => { window.__expFoldTouched = true; }); }
     if (!window.__expFoldTouched) $("expFold").open = items.length <= 5;
@@ -1042,7 +1060,6 @@ footer{text-align:center;color:var(--muted);padding:16px 18px 34px;font-size:15p
     const paidBy = {}; PEOPLE.forEach(p => paidBy[p] = 0);
     Object.keys(per).forEach(n => { const k = short(n); paidBy[k] = (paidBy[k] || 0) + per[n]; });
     const share = Math.round(total / 9 * 100) / 100;
-    $("ppShare").textContent = "· share each " + fmt(share);
     const bal = Object.keys(paidBy).map(n => ({n, paid: paidBy[n], b: Math.round((paidBy[n] - share) * 100) / 100})).sort((a,b) => b.b - a.b);
     const rowsEl = $("ppRows"); rowsEl.textContent = "";
     bal.forEach(r => {
