@@ -1,0 +1,16 @@
+{
+  "name": "Camiguin Trip · Nov 5–8",
+  "short_name": "Camiguin",
+  "description": "Our Camiguin trip: itinerary, flights, stay, costs, and the Laagan Squad.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF6F2",
+  "theme_color": "#9FD9D6",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "appId": "com.laagansquad.camiguin",
+  "appName": "Camiguin",
+  "webDir": "www",
+  "android": { "backgroundColor": "#EEF6F2" }
+}
